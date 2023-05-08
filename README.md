@@ -3,7 +3,7 @@
 Ask Your PDF is a web application that allows users to upload a PDF or Markdown file and ask questions about the content. It utilizes GPT-3.5 to answer questions based on the uploaded document, providing a helpful interface for users to get quick answers.
 
 ## Demo
-![Demo Video Link](https://youtu.be/8gNazoCVwuY)
+[Demo Video Link](https://youtu.be/8gNazoCVwuY)
 
 
 ## Features
