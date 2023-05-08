@@ -1,52 +1,66 @@
-# SemanticPDF-QA-GPT
+# Ask Your PDF
 
-## Introduction
+Ask Your PDF is a web application that allows users to upload a PDF or Markdown file and ask questions about the content. It utilizes GPT-3.5 to answer questions based on the uploaded document, providing a helpful interface for users to get quick answers.
 
-The Langchain project is a Python implementation designed to provide an interface for extracting text from a PDF file, splitting the text into smaller chunks, generating embeddings, and performing semantic search on the chunks for answering a given question. The project leverages the PyPDF2, OpenAI API, and various vector search libraries.
+## Demo
+![Demo Video Link](https://youtu.be/8gNazoCVwuY)
+
+
+## Features
+
+- Supports PDF and Markdown files
+- Displays the uploaded file for reference
+- Allows users to ask questions about the document
+- Provides answers from GPT-3.5
+- Displays similar documents to the question
+- Toggleable display for selected documents
 
 ## Installation
+
+To install the required dependencies, use the following command:
 
 To use this project, first ensure you have Python 3.x installed on your system. Next, you will need to install the required dependencies:
 
 ```bash
+pip install streamlit
 pip install PyPDF2
 pip install langchain
 pip install python-dotenv
 pip install faiss-cpu
 ```
 
-Please note that other vector search libraries (such as Pinecone or Weaviate) may have their own installation requirements.
+## Setting up the API key
+1. Create a new file named .env in the root folder of your project if it doesn't already exist.
 
-## Usage
-
-1. Create a `.env` file in your project directory containing your OpenAI API key:
-
-```
+2. Add your OpenAI API key to the .env file as follows:
+```makefile
 OPENAI_API_KEY=your_api_key_here
 ```
 
-2. Replace the `local_pdf_path` variable value with the path to the desired PDF file:
+## Usage
 
-```python
-local_pdf_path = "path/to/your/PDF/file.pdf"
+To run the web application, execute the following command:
+
+```bash
+streamlit run app_UI.py
 ```
 
-3. Update the `query` variable with the question you want the system to answer based on the contents of the PDF file:
+The web application will be accessible at `http://localhost:8501`.
 
-```python
-query = "Your question here"
-```
+## How It Works
 
-4. Run the script, which will output the answer to your question based on the information in the PDF file.
+The application uses `streamlit` to create a web interface for users to upload documents and ask questions. It processes the uploaded document, extracting the text and creating a knowledge base using OpenAI Embeddings and FAISS. 
 
-## Components
+When users ask a question, the application searches the knowledge base for similar documents and generates a response using the ChatOpenAI model. The response is based on the user's question and relevant documents from the knowledge base.
 
-- `PdfReader`: Extracts text from a given PDF file.
-- `OpenAIEmbeddings`: Generates embeddings for the extracted text using the OpenAI API.
-- `RecursiveCharacterTextSplitter`: Splits the extracted text into smaller chunks to avoid token size limits.
-- `ElasticVectorSearch`, `Pinecone`, `Weaviate`, `FAISS`: Vector search libraries for searching through text embeddings.
-- `load_qa_chain`: Loads a question-answering chain using the OpenAI API.
+The chat history is displayed to the user in a scrollable container, and the similar documents found are displayed as expandable sections below the chat input.
+
+## Simplified version in `notebooks` folder
+
+## Contributing
+
+Contributions to improve the application or fix issues are welcome. Please open an issue to discuss your ideas or submit a pull request with your changes.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+This project is released under the [MIT License](https://opensource.org/licenses/MIT).
