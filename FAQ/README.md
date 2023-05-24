@@ -3,6 +3,9 @@
 
 This is a script for a FAQ chatbot application using OpenAI's GPT-3.5 for language processing, Streamlit for the user interface, FAISS for similarity search, and Asana for retrieving FAQ documents.
 
+## Demo
+![image](./demo.png)
+
 ## Dependencies
 
 The required libraries can be installed with pip:
