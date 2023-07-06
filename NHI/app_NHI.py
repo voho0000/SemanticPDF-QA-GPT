@@ -2,6 +2,7 @@ import requests
 from dotenv import load_dotenv
 import os
 import streamlit as st
+from streamlit_chat import message
 import pinecone
 from langchain.vectorstores import Pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -10,14 +11,16 @@ from langchain.schema import SystemMessage, HumanMessage, AIMessage
 from langchain.memory import ConversationBufferMemory
 import ast
 
+
 def answer_question(docs, user_question, useAzure):
     # add Azure gpt-4 api support in the future
     if useAzure:
         os.environ["OPENAI_API_TYPE"] = "azure"
         os.environ["OPENAI_API_VERSION"] = "2023-03-15-preview"
-        os.environ["OPENAI_API_BASE"] = "https://user1-create-gpt.openai.azure.com/" 
+        os.environ["OPENAI_API_BASE"] = "https://user1-create-gpt.openai.azure.com/"
         os.environ["OPENAI_API_KEY"] = os.getenv("AZURE_API_KEY")
-        chat = AzureChatOpenAI(deployment_name="gpt-4", openai_api_version="2023-03-15-preview")
+        chat = AzureChatOpenAI(deployment_name="gpt-4",
+                               openai_api_version="2023-03-15-preview")
         # chat = AzureChatOpenAI(deployment_name="gpt-35-turbo", openai_api_version="2023-03-15-preview")
     else:
         os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY')
@@ -34,17 +37,30 @@ def answer_question(docs, user_question, useAzure):
 
     response = chat(messages).content
     # messages.append(AIMessage(content=response))
-
+    if docs:  # if there are any documents
+        # Ensure static directory exists
+        if not os.path.exists('static'):
+            os.makedirs('static')
+        # Create a temporary markdown file with the content of all documents
+        with open('static/reference.md', 'w', encoding='utf-8') as f:
+            for i, doc in enumerate(docs):
+                f.write(f"### Document {i+1}\n")
+                f.write(doc.page_content)  # Replace 'page_content' with the appropriate key for the document content
+                f.write("\n\n")
+        response += " [Reference](./static/reference.md)"
     return response
+    
+
 
 def classify_drug(user_question, useAzure):
     try:
         if useAzure:
             os.environ["OPENAI_API_TYPE"] = "azure"
             os.environ["OPENAI_API_VERSION"] = "2023-03-15-preview"
-            os.environ["OPENAI_API_BASE"] = "https://user1-create-gpt.openai.azure.com/" 
+            os.environ["OPENAI_API_BASE"] = "https://user1-create-gpt.openai.azure.com/"
             os.environ["OPENAI_API_KEY"] = os.getenv("AZURE_API_KEY")
-            chat = AzureChatOpenAI(deployment_name="gpt-4", openai_api_version="2023-03-15-preview")
+            chat = AzureChatOpenAI(
+                deployment_name="gpt-4", openai_api_version="2023-03-15-preview")
             # chat = AzureChatOpenAI(deployment_name="gpt-35-turbo", openai_api_version="2023-03-15-preview")
         else:
             os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY')
@@ -59,10 +75,11 @@ def classify_drug(user_question, useAzure):
         # messages.append(AIMessage(content=response))
 
         return response
-    
+
     except Exception as e:
         st.error(f"Error answering question: {e}")
         return "I'm sorry, I couldn't process your question. Please try again."
+
 
 def search_documents(drugs):
     load_dotenv()
@@ -75,18 +92,21 @@ def search_documents(drugs):
     embeddings = OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY'))
 
     # Load Pinecone index
-    docsearch = Pinecone.from_existing_index(index_name=INDEX_NAME, embedding=embeddings)
+    docsearch = Pinecone.from_existing_index(
+        index_name=INDEX_NAME, embedding=embeddings)
 
     docs = []
     drugs = ast.literal_eval(drugs)
-    if len(drugs)>0:
+    if len(drugs) > 0:
         for drug in drugs:
-            drug_docs = docsearch.similarity_search(drug, include_metadata=True)
-            if len(drugs)>4:
+            drug_docs = docsearch.similarity_search(
+                drug, include_metadata=True)
+            if len(drugs) > 4:
                 docs.extend(drug_docs[0])
             else:
                 docs.extend(drug_docs[0:2])
     return docs
+
 
 def display_chat_history(chat_history_container):
     with chat_history_container:
@@ -94,15 +114,16 @@ def display_chat_history(chat_history_container):
         st.header("Chat History")
         for msg in st.session_state.chat_history:
             chat_history_html += (
-                f"<div style='text-align: right; color: blue;'>You: {msg['user']}</div>"
+                f"<div style='text-align: right; background-color: #d0f0c0; border-radius: 5px; margin: 10px 10px 10px 50%; padding: 5px;'>{msg['user']}</div>"
             )
             chat_history_html += (
-                f"<div style='text-align: left; color: green;'>GPT-4: {msg['response']}</div>"
+                f"<div style='text-align: left; background-color: #d3d3d3; border-radius: 5px; margin: 10px 50% 10px 10px; padding: 5px;'>{msg['response']}</div>"
             )
-        
         chat_history_html += "</div>"
         
         st.write(chat_history_html, unsafe_allow_html=True)
+
+
 
 def display_selected_documents(col, docs):
     if not docs:
@@ -112,49 +133,39 @@ def display_selected_documents(col, docs):
         title = f"Document {idx+1}"
         with col.expander(title):
             st.write(doc.page_content)
-        
-def main():
+
+
+def on_input_change():
+    user_input = st.session_state.user_input
+    st.session_state.past.append(user_input)
+    
     # Load the .env file located in the project directory
     load_dotenv()
     useAzure = True
-    
-    st.set_page_config(page_title="Ask 健保規定", layout="wide")
 
-    st.header("Ask 健保規定 💬")
+    drugs = classify_drug(user_input, useAzure=useAzure)
+    docs = search_documents(drugs)
 
-    # Initialize docs and selected_documents
-    docs = []
+    response = answer_question(docs, user_input, useAzure=useAzure)
+    st.session_state.generated.append(response)
 
-    col1, col2 = st.columns([0.4, 0.6])  # Adjust column width
-    
-    # Store chat history in session state
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+def on_btn_click():
+    del st.session_state.past[:]
+    del st.session_state.generated[:]
 
-    with col1:
-        # Show user input
-        user_question = st.text_input("Ask a question about 健保規定:")
+st.session_state.setdefault('past', [])
+st.session_state.setdefault('generated', [])
 
-        # Send button
-        if st.button("Send"):
-            drugs = classify_drug(user_question, useAzure = useAzure)
-            docs = search_documents(drugs)
+st.title("健保規定詢問")
 
-            response = answer_question(docs, user_question,  useAzure = useAzure)
-            st.session_state.chat_history.append({"user": user_question, "response": response})
+chat_placeholder = st.empty()
 
-            # Clear user input
-            user_question = ""
+with chat_placeholder.container():    
+    for i in range(len(st.session_state['generated'])):                
+        message(st.session_state['past'][i], is_user=True, key=f"{i}_user")
+        message(st.session_state['generated'][i], key=f"{i}")
 
-        # Display document 
-        display_selected_documents(col1, docs)
+    st.button("Clear message", on_click=on_btn_click)
 
-    with col2:
-        # Initialize chat history container
-        chat_history_container = st.empty()
-
-        # display chat
-        display_chat_history(chat_history_container)
-
-if __name__ == "__main__":
-    main()
+with st.container():
+    st.text_input("User Input:", on_change=on_input_change, key="user_input")
