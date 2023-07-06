@@ -36,19 +36,14 @@ def answer_question(docs, user_question, useAzure):
     messages.append(HumanMessage(content=user_question))
 
     response = chat(messages).content
+    reference = ""
     # messages.append(AIMessage(content=response))
     if docs:  # if there are any documents
-        # Ensure static directory exists
-        if not os.path.exists('static'):
-            os.makedirs('static')
-        # Create a temporary markdown file with the content of all documents
-        with open('static/reference.md', 'w', encoding='utf-8') as f:
-            for i, doc in enumerate(docs):
-                f.write(f"### Document {i+1}\n")
-                f.write(doc.page_content)  # Replace 'page_content' with the appropriate key for the document content
-                f.write("\n\n")
-        response += " [Reference](./static/reference.md)"
-    return response
+        for i, doc in enumerate(docs):
+            reference += f"### 文件 {i+1}\n"
+            reference += doc.page_content  # Replace 'page_content' with the appropriate key for the document content
+            reference += "\n\n"
+    return response, reference
     
 
 
@@ -146,26 +141,38 @@ def on_input_change():
     drugs = classify_drug(user_input, useAzure=useAzure)
     docs = search_documents(drugs)
 
-    response = answer_question(docs, user_input, useAzure=useAzure)
+    response, reference = answer_question(docs, user_input, useAzure=useAzure)
+    st.session_state['reference'] = reference
     st.session_state.generated.append(response)
 
 def on_btn_click():
     del st.session_state.past[:]
     del st.session_state.generated[:]
 
-st.session_state.setdefault('past', [])
-st.session_state.setdefault('generated', [])
 
-st.title("健保規定詢問")
+def main():
+    st.session_state.setdefault('past', [])
+    st.session_state.setdefault('generated', [])
+    if 'reference' not in st.session_state:
+        st.session_state['reference'] = ''
 
-chat_placeholder = st.empty()
+    st.title("健保規定詢問")
 
-with chat_placeholder.container():    
-    for i in range(len(st.session_state['generated'])):                
-        message(st.session_state['past'][i], is_user=True, key=f"{i}_user")
-        message(st.session_state['generated'][i], key=f"{i}")
+    chat_tab, ref_tab= st.tabs(["Chat", "Reference"])
 
-    st.button("Clear message", on_click=on_btn_click)
+    with chat_tab:
+        chat_placeholder = st.empty()
+        with chat_placeholder.container():    
+            for i in range(len(st.session_state['generated'])):                
+                message(st.session_state['past'][i], is_user=True, key=f"{i}_user")
+                message(st.session_state['generated'][i], key=f"{i}")
 
-with st.container():
-    st.text_input("User Input:", on_change=on_input_change, key="user_input")
+        with st.container():
+            st.text_input("User Input:", on_change=on_input_change, key="user_input")
+            st.button("Clear message", on_click=on_btn_click)
+
+    with ref_tab:
+        st.markdown(st.session_state['reference'])
+
+if __name__ == "__main__":
+    main()
